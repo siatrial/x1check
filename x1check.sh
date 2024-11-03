@@ -3,8 +3,10 @@
 # Initialize output variable for a clean final report
 output=""
 
-output+="              \n"
-output+="              \n"
+# Prompt user to decide if they want to check logs
+echo -n "Do you want to check recent validator logs for errors? (yes/no): "
+read check_logs
+
 # Check Ubuntu version
 ubuntu_version=$(lsb_release -d | awk -F"\t" '{print $2}')
 output+="Ubuntu Version: $ubuntu_version\n"
@@ -75,6 +77,38 @@ output+="\n=== System Uptime ===\n"
 uptime=$(uptime -p | sed 's/up //')
 output+="Uptime: $uptime\n"
 
+# Network Connectivity Check (Ping to Solana RPC Server)
+output+="\n=== Network Connectivity ===\n"
+solana_rpc="api.mainnet-beta.solana.com"
+if ping -c 1 "$solana_rpc" &> /dev/null; then
+    latency=$(ping -c 1 "$solana_rpc" | grep 'time=' | awk -F'time=' '{print $2}')
+    output+="Solana RPC ($solana_rpc) is reachable. Latency: $latency\n"
+else
+    output+="Solana RPC ($solana_rpc) is not reachable.\n"
+fi
+
+# Validator Logs Check (Last 5 "ERROR" Entries) - Only if user chose 'yes'
+if [[ "$check_logs" =~ ^[Yy][Ee][Ss]$ ]]; then
+    output+="\n=== Recent Validator Errors ===\n"
+    log_file="/var/log/solana/validator.log"
+    if [ ! -f "$log_file" ]; then
+        log_file=$(find / -type f -name "validator.log" 2>/dev/null | head -n 1)
+    fi
+
+    if [ -f "$log_file" ]; then
+        recent_errors=$(grep "ERROR" "$log_file" | tail -n 5)
+        if [ -n "$recent_errors" ]; then
+            output+="Log File: $log_file\nRecent Errors:\n$recent_errors\n"
+        else
+            output+="No recent errors found in the validator logs.\n"
+        fi
+    else
+        output+="Validator log file not found.\n"
+    fi
+else
+    output+="\nValidator log check skipped by user.\n"
+fi
+
 # Find JSON files in specified directories and retrieve their public keys and balances
 output+="\nJSON Files Public Key and Balance Information:\n"
 for folder in "${folders[@]}"; do
@@ -102,5 +136,3 @@ done
 
 # Final Output
 echo -e "$output"
-
-
