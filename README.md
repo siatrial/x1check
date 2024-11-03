@@ -8,7 +8,7 @@ validator status, staking status, and public key balance details for configured 
 Features
 
 - Checks Ubuntu version and Solana installation/version
-- Verifies if required firewall ports are open
+- Verifies if required firewall ports are open (if shown as closed could mean you have a seperate hardware firewall or service provider firewall )
 - Inspects specific folders for configuration files (`.config/solana`, `xolana`, `x1_validator`)
 - Retrieves public keys and Solana balances for each keypair JSON file
 - Shows disk usage for the root partition
