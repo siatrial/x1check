@@ -34,7 +34,7 @@ else
 fi
 
 # Check firewall ports
-output+="\n${BLUE}Firewall Port Status:${NC}\n"
+output+="\n${BLUE}Ubuntu Firewall Port Status (Does not check external Firewall):${NC}\n"
 required_ports=(8000:10000 3334 22)
 for port in "${required_ports[@]}"; do
     if sudo ufw status | grep -q "$port"; then
@@ -45,7 +45,7 @@ for port in "${required_ports[@]}"; do
 done
 
 # Check for necessary folders
-output+="\n${BLUE}Folder Check:${NC}\n"
+output+="\n${BLUE}Looking for installed folders:${NC}\n"
 folders=("$HOME/.config/solana" "$HOME/xolana" "$HOME/x1_validator")
 for folder in "${folders[@]}"; do
     if [ -d "$folder" ]; then
