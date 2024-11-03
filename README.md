@@ -5,6 +5,7 @@ To install and set up `x1check`, run this command in your terminal:
 ```bash
 curl -s https://raw.githubusercontent.com/siatrial/x1check/main/install.sh | bash
 
+Then run: x1check
 
 X1 Validator Checker is
 A bash script to check the setup status of a Solana validator/staker on an Ubuntu server. 
@@ -36,12 +37,3 @@ To install `jq` and Solana CLI, use:
 ```bash
 sudo apt update
 sudo apt install jq
-sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
-
-nano x1check.sh
-paste in script
-then save
-
-chmod +x x1check.sh
-
-./x1check.sh
