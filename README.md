@@ -1,5 +1,12 @@
-X1 Validator Checker
+X1 Validator Checker Installation
 
+To install and set up `x1check`, run this command in your terminal:
+
+```bash
+curl -s https://raw.githubusercontent.com/siatrial/x1check/main/install.sh | bash
+
+
+X1 Validator Checker is
 A bash script to check the setup status of a Solana validator/staker on an Ubuntu server. 
 This script provides comprehensive system and validator status information, 
 including Solana version, firewall settings, disk usage, uptime, 
