@@ -141,5 +141,16 @@ for folder in "${folders[@]}"; do
     fi
 done
 
-# Final Output
+# Output main report
 echo -e "$output"
+
+# Check for speedtest-cli and run a speed test
+echo -e "\n${BLUE}=== Network Speed Test ===${NC}"
+if command -v speedtest-cli &> /dev/null; then
+    # Run speed test
+    speedtest-cli
+else
+    # Prompt to install speedtest-cli
+    echo -e "${RED}speedtest-cli is not installed.${NC}"
+    echo -e "${BLUE}To install it, run:${NC} sudo apt install speedtest-cli"
+fi
