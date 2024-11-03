@@ -13,6 +13,7 @@ Features
 - Retrieves public keys and Solana balances for each keypair JSON file
 - Shows disk usage for the root partition
 - Displays system uptime
+- Checks Network Connectivity
 - Checks logs for errors ( decide yes or no at start )
 - Checks if the validator is running and staking status is active
 
