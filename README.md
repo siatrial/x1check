@@ -1,4 +1,4 @@
-Solana Validator Checker
+X1 Validator Checker
 
 A bash script to check the setup status of a Solana validator/staker on an Ubuntu server. 
 This script provides comprehensive system and validator status information, 
@@ -28,7 +28,9 @@ sudo apt update
 sudo apt install jq
 sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
 
-
+nano x1check.sh
+paste in script
+then save
 
 chmod +x x1check.sh
 
