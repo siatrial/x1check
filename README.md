@@ -2,7 +2,6 @@ X1 Validator Checker Installation
 
 To install and set up `x1check`, run this command in your terminal:
 
-```bash
 curl -s https://raw.githubusercontent.com/siatrial/x1check/main/install.sh | bash
 
 Then run: x1check
