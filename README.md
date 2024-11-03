@@ -16,6 +16,7 @@ Features
 - Checks Network Connectivity
 - Checks logs for errors ( decide yes or no at start )
 - Checks if the validator is running and staking status is active
+- Does a Speed test with speedtest-cli
 
 ## Prerequisites
 
