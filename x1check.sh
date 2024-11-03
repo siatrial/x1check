@@ -77,14 +77,15 @@ output+="\n=== System Uptime ===\n"
 uptime=$(uptime -p | sed 's/up //')
 output+="Uptime: $uptime\n"
 
-# Network Connectivity Check (Ping to Solana RPC Server)
+# Set the RPC endpoint for the network (using the correct X1 network endpoint)
+network_rpc="http://xolana.xen.network:8899"  # Replace this if your endpoint changes
+
+# Network Connectivity Check (curl to check the specified network RPC Server)
 output+="\n=== Network Connectivity ===\n"
-solana_rpc="api.mainnet-beta.solana.com"
-if ping -c 1 "$solana_rpc" &> /dev/null; then
-    latency=$(ping -c 1 "$solana_rpc" | grep 'time=' | awk -F'time=' '{print $2}')
-    output+="Solana RPC ($solana_rpc) is reachable. Latency: $latency\n"
+if curl -s --connect-timeout 5 "$network_rpc" &> /dev/null; then
+    output+="Network RPC ($network_rpc) is reachable.\n"
 else
-    output+="Solana RPC ($solana_rpc) is not reachable.\n"
+    output+="Network RPC ($network_rpc) is not reachable.\n"
 fi
 
 # Validator Logs Check (Last 5 "ERROR" Entries) - Only if user chose 'yes'
