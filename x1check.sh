@@ -13,6 +13,10 @@ output=""
 echo -n "Do you want to check recent validator logs for errors? (yes/no): "
 read check_logs
 
+# Prompt user to decide if they want to perform a speed test
+echo -n "Do you want to perform a network speed test? (yes/no): "
+read run_speedtest
+
 # Check Ubuntu version
 ubuntu_version=$(lsb_release -d | awk -F"\t" '{print $2}')
 output+="${BLUE}Ubuntu Version:${NC} $ubuntu_version\n"
@@ -144,13 +148,23 @@ done
 # Output main report
 echo -e "$output"
 
-# Check for speedtest-cli and run a speed test
-echo -e "\n${BLUE}=== Network Speed Test ===${NC}"
-if command -v speedtest-cli &> /dev/null; then
-    # Run speed test
-    speedtest-cli
+# Network Speed Test Section
+if [[ "$run_speedtest" =~ ^[Yy][Ee][Ss]$ ]]; then
+    echo -e "\n${BLUE}=== Network Speed Test ===${NC}"
+    if command -v speedtest-cli &> /dev/null; then
+        # Run speed test and simplify output
+        echo -n "Testing download speed................................................................................"
+        download_speed=$(speedtest-cli --no-upload | grep 'Download:' | awk '{print $2, $3}')
+        echo -e "\nDownload: ${download_speed}"
+
+        echo -n "Testing upload speed......................................................................................................"
+        upload_speed=$(speedtest-cli --no-download | grep 'Upload:' | awk '{print $2, $3}')
+        echo -e "\nUpload: ${upload_speed}"
+    else
+        # Prompt to install speedtest-cli
+        echo -e "${RED}speedtest-cli is not installed.${NC}"
+        echo -e "${BLUE}To install it, run:${NC} sudo apt install speedtest-cli"
+    fi
 else
-    # Prompt to install speedtest-cli
-    echo -e "${RED}speedtest-cli is not installed.${NC}"
-    echo -e "${BLUE}To install it, run:${NC} sudo apt install speedtest-cli"
+    echo -e "${YELLOW}Speed test skipped by user.${NC}"
 fi
