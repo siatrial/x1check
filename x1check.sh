@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# Define color variables
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m'  # No Color / Reset
-
 # Initialize output variable for a clean final report
 output=""
 
@@ -17,24 +12,24 @@ echo -n "Do you want to perform a network speed test? (y/n): "
 read -r run_speedtest
 
 # System Uptime
-output+="\n${BLUE}=== System Uptime ===${NC}\n"
+output+="\n=== System Uptime ===\n"
 uptime=$(uptime -p | sed 's/up //')
 output+="Uptime: $uptime\n"
 
 # Check Ubuntu version
 ubuntu_version=$(lsb_release -d | awk -F"\t" '{print $2}')
-output+="${BLUE}Ubuntu Version:${NC} $ubuntu_version\n"
+output+="Ubuntu Version: $ubuntu_version\n"
 
 # Check Solana installation and version
 if command -v solana &> /dev/null; then
     solana_version=$(solana --version)
-    output+="${BLUE}Solana Version:${NC} $solana_version\n"
+    output+="Solana Version: $solana_version\n"
 else
-    output+="${BLUE}Solana Version:${NC} Not installed\n"
+    output+="Solana Version: Not installed\n"
 fi
 
 # Check firewall ports
-output+="\n${BLUE}Ubuntu Firewall Port Status (Does not check external Firewall):${NC}\n"
+output+="\nUbuntu Firewall Port Status (Does not check external Firewall):\n"
 required_ports=(8000:10000 3334 22)
 for port in "${required_ports[@]}"; do
     if sudo ufw status | grep -q "$port"; then
@@ -45,13 +40,13 @@ for port in "${required_ports[@]}"; do
 done
 
 # Check for necessary folders
-output+="\n${BLUE}Looking for installed folders:${NC}\n"
+output+="\nLooking for installed folders:\n"
 folders=("$HOME/.config/solana" "$HOME/xolana" "$HOME/x1_validator")
 for folder in "${folders[@]}"; do
     if [ -d "$folder" ]; then
-        output+="Folder exists: ${GREEN}$folder${NC}\n"
+        output+="Folder exists: $folder\n"
     else
-        output+="Folder missing: ${GREEN}$folder${NC}\n"
+        output+="Folder missing: $folder\n"
     fi
 done
 
@@ -76,7 +71,7 @@ output+=$([ "$staking_active" = true ] && echo "Active" || echo "Inactive")
 output+="\n"
 
 # Disk Usage (finds the root partition dynamically)
-output+="\n${BLUE}=== Disk Usage ===${NC}\n"
+output+="\n=== Disk Usage ===\n"
 root_partition=$(df -h / | grep '/' | awk '{print $1}')
 disk_total=$(df -h / | grep '/' | awk '{print $2}')
 disk_used=$(df -h / | grep '/' | awk '{print $3}')
@@ -90,7 +85,7 @@ output+="Free: $disk_free\n"
 network_rpc="http://xolana.xen.network:8899"  # Replace this if your endpoint changes
 
 # Network Connectivity Check (curl to check the specified network RPC Server)
-output+="\n${BLUE}=== Network Connectivity ===${NC}\n"
+output+="\n=== Network Connectivity ===\n"
 if curl -s --connect-timeout 5 "$network_rpc" &> /dev/null; then
     output+="Network RPC ($network_rpc) is reachable.\n"
 else
@@ -99,7 +94,7 @@ fi
 
 # Validator Logs Check (Last 5 "ERROR" Entries) - Only if user chose 'y'
 if [[ "$check_logs" =~ ^[Yy]$ ]]; then
-    output+="\n${BLUE}=== Recent Validator Errors ===${NC}\n"
+    output+="\n=== Recent Validator Errors ===\n"
     log_file="/var/log/solana/validator.log"
     if [ ! -f "$log_file" ]; then
         log_file=$(find / -type f -name "validator.log" 2>/dev/null | head -n 1)
@@ -108,7 +103,7 @@ if [[ "$check_logs" =~ ^[Yy]$ ]]; then
     if [ -f "$log_file" ]; then
         recent_errors=$(grep "ERROR" "$log_file" | tail -n 5)
         if [ -n "$recent_errors" ]; then
-            output+="Log File: ${GREEN}$log_file${NC}\nRecent Errors:\n$recent_errors\n"
+            output+="Log File: $log_file\nRecent Errors:\n$recent_errors\n"
         else
             output+="No recent errors found in the validator logs.\n"
         fi
@@ -124,7 +119,7 @@ echo -e "$output"
 
 # Network Speed Test Section
 if [[ "$run_speedtest" =~ ^[Yy]$ ]]; then
-    echo -e "\n${BLUE}=== Network Speed Test ===${NC}"
+    echo -e "\n=== Network Speed Test ==="
     if command -v speedtest-cli &> /dev/null; then
         # Capture server info line
         server_info=$(speedtest-cli | grep 'Hosted by')
@@ -140,15 +135,15 @@ if [[ "$run_speedtest" =~ ^[Yy]$ ]]; then
         echo -e "\nUpload: ${upload_speed}"
     else
         # Prompt to install speedtest-cli
-        echo -e "${RED}speedtest-cli is not installed.${NC}"
-        echo -e "${BLUE}To install it, run:${NC} sudo apt install speedtest-cli"
+        echo -e "speedtest-cli is not installed."
+        echo -e "To install it, run: sudo apt install speedtest-cli"
     fi
 else
-    echo -e "${YELLOW}Speed test skipped by user.${NC}"
+    echo -e "Speed test skipped by user."
 fi
 
 # Find JSON files in specified directories and retrieve their public keys and balances
-echo -e "\n${BLUE}JSON Files Public Key and Balance Information:${NC}"
+echo -e "\nJSON Files Public Key and Balance Information:"
 for folder in "${folders[@]}"; do
     if [ -d "$folder" ]; then
         json_files=$(find "$folder" -type f -name "*.json" 2>/dev/null)
@@ -161,13 +156,13 @@ for folder in "${folders[@]}"; do
                     # Get the balance of the public key
                     balance=$(solana balance "$json_file" 2>/dev/null)
                     # Format output for each JSON file with key, balance, and file path
-                    echo -e "File: ${GREEN}$json_file${NC} | Public Key: ${BLUE}$public_key${NC} | Balance: ${BLUE}$balance${NC}"
+                    echo -e "File: $json_file | Public Key: $public_key | Balance: $balance"
                 else
-                    echo -e "File: ${GREEN}$json_file${NC} | Unable to retrieve public key"
+                    echo -e "File: $json_file | Unable to retrieve public key"
                 fi
             done
         else
-            echo -e "No JSON files found in ${GREEN}$folder${NC}"
+            echo -e "No JSON files found in $folder"
         fi
     fi
 done
