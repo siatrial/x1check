@@ -16,13 +16,14 @@ validator status, staking status, and public key balance details for configured 
 Features
 
 Interactive Menu: Easily choose between a full test or specific checks:
-Press Enter for a full test.
-Press b for a balance check.
-Press s for a speed test.
-Press L to check logs for errors.
-Press n for a network connectivity check.
-Press q to quit.
+- Press Enter for a Full Test.
+- Press b for a balance check.
+- Press s for a speed test.
+- Press L to check logs for errors.
+- Press n for a network connectivity check.
+- Press q to quit.
 
+Full Test
 - Checks Ubuntu version and Solana installation/version
 - Verifies if required firewall ports are open (if shown as closed could mean you have a seperate hardware firewall or service provider firewall )
 - Inspects specific folders for configuration files (`.config/solana`, `xolana`, `x1_validator`)
