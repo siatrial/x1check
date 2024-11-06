@@ -41,8 +41,9 @@ Ensure the following are installed on your Ubuntu system:
 
 This script uses Solana CLI commands (`solana balance`, `solana-keygen`) to interact with Solana accounts.
 - **jq**: Used for parsing JSON files in the script.
-
+- **speedtest-cli** for internet upload/download speed test
 To install `jq` and Solana CLI, use:
 ```bash
 sudo apt update
 sudo apt install jq
+sudo apt install speedtest-cli
