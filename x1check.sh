@@ -3,8 +3,8 @@
 # Set the RPC endpoint for the network (using the correct X1 network endpoint)
 network_rpc="http://xolana.xen.network:8899"  # Replace this if your endpoint changes
 
-# Define the folders to check for JSON files
-folders=("$HOME/.config/solana" "$HOME/xolana" "$HOME/x1_validator")
+# Define the folders to check for JSON files (only root of agave-xolana and .config/solana)
+folders=("$HOME/.config/solana" "$HOME/agave-xolana")
 
 # Function to display the options
 function display_menu() {
@@ -23,7 +23,7 @@ function balance_check() {
     echo -e "\nJSON Files Public Key and Balance Information:"
     for folder in "${folders[@]}"; do
         if [ -d "$folder" ]; then
-            json_files=$(find "$folder" -type f -name "*.json" 2>/dev/null)
+            json_files=$(find "$folder" -maxdepth 1 -type f -name "*.json" 2>/dev/null)
             if [ -n "$json_files" ]; then
                 for json_file in $json_files; do
                     public_key=$(solana-keygen pubkey "$json_file" 2>/dev/null)
