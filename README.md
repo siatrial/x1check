@@ -26,7 +26,7 @@ Interactive Menu: Easily choose between a full test or specific checks:
 Full Test
 - Checks Ubuntu version and Solana installation/version
 - Verifies if required firewall ports are open (if shown as closed could mean you have a seperate hardware firewall or service provider firewall )
-- Inspects specific folders for configuration files (`.config/solana`, `xolana`, `x1_validator`)
+- Inspects specific folders for configuration files (`agave-xolana, .config/solana`, `xolana`, `x1_validator`)
 - Retrieves public keys and Solana balances for each keypair JSON file
 - Shows disk usage for the root partition
 - Displays system uptime
