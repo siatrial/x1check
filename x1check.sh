@@ -66,7 +66,7 @@ function speed_test() {
 # Function to perform a log check
 function log_check() {
     echo -e "\n=== Recent Validator Errors ==="
-    log_file="/var/log/solana/validator.log"
+    log_file="$HOME/agave-xolana/validator.log"
     if [ ! -f "$log_file" ]; then
         log_file=$(find / -type f -name "validator.log" 2>/dev/null | head -n 1)
     fi
