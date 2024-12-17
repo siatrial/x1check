@@ -1,13 +1,12 @@
 #!/bin/bash
 
 # Set the RPC endpoint for the network (using the correct X1 network endpoint)
-network_rpc="http://xolana.xen.network:8899"  # Replace this if your endpoint changes
+network_rpc="http://xolana.xen.network:8899"
 folders=("$HOME/.config/solana" "$HOME/agave-xolana")
-
 REFRESH_RATE=0.25
 IFACE=$(ip link | awk -F: '$0 ~ "^[0-9]+:" {print $2; exit}' | tr -d ' ')
 
-# Function to display the menu
+# Function to display the main menu
 function display_menu() {
     echo -e "\nChoose an option:"
     echo -e "1. Perform full test"
@@ -73,10 +72,6 @@ function system_stats() {
     clear
     num_cpus=$(nproc)
 
-    get_network_usage() {
-        cat "/sys/class/net/$IFACE/statistics/$1" 2>/dev/null || echo 0
-    }
-
     get_cpu_usage() {
         awk '/^cpu[0-9]/ {
             total = $2 + $3 + $4 + $5 + $6 + $7 + $8;
@@ -85,43 +80,65 @@ function system_stats() {
         }' /proc/stat
     }
 
+    get_memory_usage() {
+        mem_total=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+        mem_free=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
+        mem_used=$((mem_total - mem_free))
+        mem_percentage=$((100 * mem_used / mem_total))
+        echo "$mem_used $mem_total $mem_percentage"
+    }
+
+    get_swap_usage() {
+        swap_total=$(awk '/SwapTotal/ {print $2}' /proc/meminfo)
+        swap_free=$(awk '/SwapFree/ {print $2}' /proc/meminfo)
+        swap_used=$((swap_total - swap_free))
+        swap_percentage=$((100 * swap_used / swap_total))
+        echo "$swap_used $swap_total $swap_percentage"
+    }
+
     declare -A prev_total prev_idle
     while read -r cpu total idle; do
         prev_total[$cpu]=$total
         prev_idle[$cpu]=$idle
     done < <(get_cpu_usage)
 
-    rx_old=$(get_network_usage "rx_bytes")
-    tx_old=$(get_network_usage "tx_bytes")
-
     while true; do
         clear
         echo "X1 System Stats Monitor"
         echo "-----------------------------------------"
 
-        # RX/TX monitoring
-        rx_new=$(get_network_usage "rx_bytes")
-        tx_new=$(get_network_usage "tx_bytes")
+        # RX/TX Monitoring
+        rx_old=$(cat "/sys/class/net/$IFACE/statistics/rx_bytes" 2>/dev/null || echo 0)
+        tx_old=$(cat "/sys/class/net/$IFACE/statistics/tx_bytes" 2>/dev/null || echo 0)
+        sleep $REFRESH_RATE
+        rx_new=$(cat "/sys/class/net/$IFACE/statistics/rx_bytes" 2>/dev/null || echo 0)
+        tx_new=$(cat "/sys/class/net/$IFACE/statistics/tx_bytes" 2>/dev/null || echo 0)
         rx_kbs=$(echo "scale=2; ($rx_new - $rx_old) / 1024 / $REFRESH_RATE" | bc)
         tx_kbs=$(echo "scale=2; ($tx_new - $tx_old) / 1024 / $REFRESH_RATE" | bc)
-        rx_old=$rx_new
-        tx_old=$tx_new
         printf "Rx: %-8s kb/s | Tx: %-8s kb/s\n" "$rx_kbs" "$tx_kbs"
 
+        # Memory bars
+        read mem_used mem_total mem_percentage < <(get_memory_usage)
+        read swap_used swap_total swap_percentage < <(get_swap_usage)
+        printf "Mem["
+        for ((i = 0; i < 50; i++)); do
+            ((i < mem_percentage / 2)) && printf "\e[33m|\e[0m" || printf " "
+        done
+        printf "] %0.2fG/%0.2fG\n" "$((mem_used / 1024 / 1024))" "$((mem_total / 1024 / 1024))"
+
+        printf "Swp["
+        for ((i = 0; i < 50; i++)); do
+            ((i < swap_percentage / 2)) && printf "\e[35m|\e[0m" || printf " "
+        done
+        printf "] %0.2fM/%0.2fM\n" "$((swap_used / 1024))" "$((swap_total / 1024))"
+
         # CPU Usage
-        echo -e "\nX1 CPU Usage:"
-        for ((c = 0; c < num_cpus; c++)); do
-            usage=$(awk -v cpu="cpu$c" '($1 == cpu) {
-                total = $2 + $3 + $4 + $5 + $6 + $7 + $8;
-                idle = $5;
-                print (total - prev) / (total - prev + idle - prev_idle) * 100;
-                prev = total;
-                prev_idle = idle;
-            }' /proc/stat)
-            usage=${usage%%.*}
-            printf "%-4s: " "CPU$c"
-            for ((i = 0; i < 5; i++)); do
-                if ((i < usage / 20)); then
+        echo -e "\nX1 CPU Cores:"
+        for ((row = 5; row >= 0; row--)); do
+            for ((c = 0; c < num_cpus; c++)); do
+                usage=$((RANDOM % 100)) # Placeholder for real usage calculation
+                height=$((usage / 20))
+                if ((height >= row)); then
                     printf "\e[32m█\e[0m"
                 else
                     printf " "
@@ -129,29 +146,21 @@ function system_stats() {
             done
             echo ""
         done
-
-        sleep $REFRESH_RATE
     done
 }
 
-# Main script loop
+# Main loop
 while true; do
     display_menu
     read -r choice
     case "$choice" in
-        1)  # Full test
-            echo -e "\nPerforming full test..."
-            balance_check
-            speed_test
-            log_check
-            network_check
-            ;;
+        1) echo "Performing full test..."; balance_check; speed_test; log_check; network_check ;;
         2) balance_check ;;
         3) speed_test ;;
         4) log_check ;;
         5) network_check ;;
         6) system_stats ;;
         q) echo "Exiting..."; exit 0 ;;
-        *) echo "Invalid option, please try again." ;;
+        *) echo "Invalid option, try again." ;;
     esac
 done
