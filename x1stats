@@ -1,0 +1,121 @@
+                                                                                                                                                                                                                                                                                                                           x1block.sh                                                                                                                                                                                                                                                                                                                                      
+#!/usr/bin/env bash
+
+REFRESH_RATE=0.25
+IFACE=$(ip link | awk -F: '$0 ~ "^[0-9]+:" {print $2; exit}' | tr -d ' ')
+trap 'tput cnorm; exit 0' SIGINT SIGTERM
+
+num_cpus=$(nproc)
+tput civis  # Hide cursor
+clear
+
+# Function to get CPU usage
+get_cpu_usage() {
+    awk '/^cpu[0-9]/ {
+        total = $2 + $3 + $4 + $5 + $6 + $7 + $8;
+        idle = $5;
+        print $1, total, idle
+    }' /proc/stat
+}
+
+# Function to get memory stats
+get_memory_usage() {
+    mem_total=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+    mem_free=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
+    mem_used=$((mem_total - mem_free))
+    mem_percentage=$((100 * mem_used / mem_total))
+    echo "$mem_used $mem_total $mem_percentage"
+}
+
+get_swap_usage() {
+    swap_total=$(awk '/SwapTotal/ {print $2}' /proc/meminfo)
+    swap_free=$(awk '/SwapFree/ {print $2}' /proc/meminfo)
+    swap_used=$((swap_total - swap_free))
+    swap_percentage=$((100 * swap_used / swap_total))
+    echo "$swap_used $swap_total $swap_percentage"
+}
+
+# Initialize previous stats
+declare -A prev_total prev_idle
+while read -r cpu total idle; do
+    prev_total[$cpu]=$total
+    prev_idle[$cpu]=$idle
+done < <(get_cpu_usage)
+
+while true; do
+    # RX/TX Monitoring
+    rx_old=$(cat "/sys/class/net/$IFACE/statistics/rx_bytes" 2>/dev/null || echo 0)
+    tx_old=$(cat "/sys/class/net/$IFACE/statistics/tx_bytes" 2>/dev/null || echo 0)
+    sleep $REFRESH_RATE
+    rx_new=$(cat "/sys/class/net/$IFACE/statistics/rx_bytes" 2>/dev/null || echo 0)
+    tx_new=$(cat "/sys/class/net/$IFACE/statistics/tx_bytes" 2>/dev/null || echo 0)
+    rx_kbs=$(echo "scale=2; ($rx_new - $rx_old) / 1024 / $REFRESH_RATE" | bc)
+    tx_kbs=$(echo "scale=2; ($tx_new - $tx_old) / 1024 / $REFRESH_RATE" | bc)
+
+    # Memory stats
+    read mem_used mem_total mem_percentage < <(get_memory_usage)
+    read swap_used swap_total swap_percentage < <(get_swap_usage)
+
+    # Get CPU stats
+    declare -A core_usage
+    while read -r cpu total idle; do
+        delta_total=$((total - prev_total[$cpu]))
+        delta_idle=$((idle - prev_idle[$cpu]))
+        usage=$(( (100 * (delta_total - delta_idle)) / delta_total ))
+        core_usage[$cpu]=$usage
+        prev_total[$cpu]=$total
+        prev_idle[$cpu]=$idle
+    done < <(get_cpu_usage)
+
+    # Clear screen
+    tput cup 0 0
+    echo "X1 Network Stats Interface: $IFACE"
+    echo "-----------------------------------------"
+    printf "Rx: %-8s kb/s | Tx: %-8s kb/s\n" "$rx_kbs" "$tx_kbs"
+    echo ""
+
+    # Memory bars
+    printf "Mem["
+    for ((i = 0; i < 50; i++)); do
+        ((i < mem_percentage / 2)) && printf "\e[33m|\e[0m" || printf " "
+    done
+    printf "] %0.2fG/%0.2fG\n" "$((mem_used / 1024 / 1024))" "$((mem_total / 1024 / 1024))"
+
+    printf "Swp["
+    for ((i = 0; i < 50; i++)); do
+        ((i < swap_percentage / 2)) && printf "\e[35m|\e[0m" || printf " "
+    done
+    printf "] %0.2fM/%0.2fM\n" "$((swap_used / 1024))" "$((swap_total / 1024))"
+    echo ""
+
+    # CPU Usage Bars
+    echo "X1 CPU Cores :"
+    for ((row = 5; row >= 0; row--)); do
+        for ((c = 0; c < num_cpus; c++)); do
+            usage=${core_usage[cpu$c]:-0}
+            height=$((usage / 20))
+            if ((height >= row)); then
+                if ((usage >= 90)); then
+                    printf "\e[31m█\e[0m "
+                else
+                    printf "\e[32m█\e[0m "
+                fi
+            else
+                printf "  "
+            fi
+        done
+        echo ""
+    done
+    sleep $REFRESH_RATE
+done
+
+
+
+
+
+
+
+
+
+
+
