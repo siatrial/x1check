@@ -6,15 +6,19 @@ network_rpc="http://xolana.xen.network:8899"  # Replace this if your endpoint ch
 # Define the folders to check for JSON files (only root of agave-xolana and .config/solana)
 folders=("$HOME/.config/solana" "$HOME/agave-xolana")
 
+# Refresh rate for stats option
+REFRESH_RATE=0.25
+
 # Function to display the options
 function display_menu() {
     echo -e "\nChoose an option:"
-    echo -e "Press Enter to perform a full test."
-    echo -e "Press 'b' to only do a balance check."
-    echo -e "Press 's' to only do a speed test."
-    echo -e "Press 'L' to only check logs for errors."
-    echo -e "Press 'n' to only do a network check."
-    echo -e "Press 'q' to quit."
+    echo -e "1. Perform full test"
+    echo -e "2. Balance check only"
+    echo -e "3. Speed test only"
+    echo -e "4. Log check for errors only"
+    echo -e "5. Network check only"
+    echo -e "6. System stats monitor"
+    echo -e "q. Quit"
     echo -n "Your choice: "
 }
 
@@ -45,18 +49,7 @@ function balance_check() {
 function speed_test() {
     echo -e "\n=== Network Speed Test ==="
     if command -v speedtest-cli &> /dev/null; then
-        # Capture server info line
-        server_info=$(speedtest-cli | grep 'Hosted by')
-        echo -e "$server_info"
-
-        # Run speed test and simplify output
-        echo -n "Testing download speed................................................................................"
-        download_speed=$(speedtest-cli --no-upload | grep 'Download:' | awk '{print $2, $3}')
-        echo -e "\nDownload: ${download_speed}"
-
-        echo -n "Testing upload speed......................................................................................................"
-        upload_speed=$(speedtest-cli --no-download | grep 'Upload:' | awk '{print $2, $3}')
-        echo -e "\nUpload: ${upload_speed}"
+        echo -e "$(speedtest-cli --simple)"
     else
         echo -e "speedtest-cli is not installed."
         echo -e "To install it, run: sudo apt install speedtest-cli"
@@ -93,87 +86,73 @@ function network_check() {
     fi
 }
 
+# Function to display system stats monitor
+function system_stats() {
+    tput civis  # Hide cursor
+    trap 'tput cnorm; exit 0' SIGINT SIGTERM
+    clear
+    num_cpus=$(nproc)
+
+    get_cpu_usage() {
+        awk '/^cpu[0-9]/ {
+            total = $2 + $3 + $4 + $5 + $6 + $7 + $8;
+            idle = $5;
+            print $1, total, idle
+        }' /proc/stat
+    }
+
+    declare -A prev_total prev_idle
+    while read -r cpu total idle; do
+        prev_total[$cpu]=$total
+        prev_idle[$cpu]=$idle
+    done < <(get_cpu_usage)
+
+    while true; do
+        clear
+        echo "X1 System Stats Monitor"
+        echo "-----------------------------------------"
+
+        rx_kbs=$(awk '{print $1}' /sys/class/net/*/statistics/rx_bytes)
+        tx_kbs=$(awk '{print $1}' /sys/class/net/*/statistics/tx_bytes)
+
+        printf "Rx: %s kb/s | Tx: %s kb/s\n" "$rx_kbs" "$tx_kbs"
+        
+        # CPU bars
+        echo "X1 CPU Usage:"
+        for ((row = 5; row >= 0; row--)); do
+            for ((c = 0; c < num_cpus; c++)); do
+                usage=${core_usage[cpu$c]:-0}
+                height=$((usage / 20))
+                if ((height >= row)); then
+                    printf "\e[32m█\e[0m "
+                else
+                    printf "  "
+                fi
+            done
+            echo ""
+        done
+        sleep $REFRESH_RATE
+    done
+}
+
 # Main loop
 while true; do
     display_menu
     read -r user_choice
 
-    # Convert user_choice to lowercase to handle case insensitivity
-    user_choice=$(echo "$user_choice" | tr '[:upper:]' '[:lower:]')
-
     case "$user_choice" in
-        "")  # Full test
+        1)  # Full test
             echo -e "\nPerforming full test..."
-            echo -e "\n=== System Uptime ==="
-            uptime=$(uptime -p | sed 's/up //')
-            echo -e "Uptime: $uptime"
-
-            echo -e "\nUbuntu Version: $(lsb_release -d | awk -F'\t' '{print $2}')"
-
-            if command -v solana &> /dev/null; then
-                echo -e "Solana Version: $(solana --version)"
-            else
-                echo -e "Solana Version: Not installed"
-            fi
-
-            echo -e "\nUbuntu Firewall Port Status (Does not check external Firewall):"
-            required_ports=(8000:10000 3334 22)
-            for port in "${required_ports[@]}"; do
-                if sudo ufw status | grep -q "$port"; then
-                    echo -e "Port $port is open"
-                else
-                    echo -e "Port $port is closed"
-                fi
-            done
-
-            echo -e "\nLooking for installed folders:"
-            for folder in "${folders[@]}"; do
-                if [ -d "$folder" ]; then
-                    echo -e "Folder exists: $folder"
-                else
-                    echo -e "Folder missing: $folder"
-                fi
-            done
-
-            if pgrep -f solana-validator &> /dev/null; then
-                echo -e "\nValidator Status: Running"
-            else
-                echo -e "\nValidator Status: Not Running"
-            fi
-
-            echo -e "\n=== Disk Usage ==="
-            root_partition=$(df -h / | grep '/' | awk '{print $1}')
-            echo -e "Partition: $root_partition"
-            echo -e "Total: $(df -h / | grep '/' | awk '{print $2}')"
-            echo -e "Used: $(df -h / | grep '/' | awk '{print $3}')"
-            echo -e "Free: $(df -h / | grep '/' | awk '{print $4}')"
-
             network_check
             log_check
             balance_check
             ;;
-        "b")  # Balance check only
-            echo -e "\nPerforming balance check only..."
-            balance_check
-            ;;
-        "s")  # Speed test only
-            echo -e "\nPerforming speed test only..."
-            speed_test
-            ;;
-        "l")  # Log check only
-            echo -e "\nChecking logs for errors only..."
-            log_check
-            ;;
-        "n")  # Network check only
-            echo -e "\nPerforming network check only..."
-            network_check
-            ;;
-        "q")  # Quit
-            echo -e "\nExiting the script. Goodbye!"
-            break
-            ;;
-        *)  # Invalid option
-            echo -e "\nInvalid option. Please try again."
-            ;;
+        2) balance_check ;;
+        3) speed_test ;;
+        4) log_check ;;
+        5) network_check ;;
+        6) system_stats ;;
+        q) echo -e "\nExiting the script. Goodbye!"; break ;;
+        *) echo -e "\nInvalid option. Please try again." ;;
     esac
 done
