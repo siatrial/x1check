@@ -1,23 +1,23 @@
 #!/bin/bash
 
-# Set the RPC endpoint for the network (using the correct X1 network endpoint)
-network_rpc="http://xolana.xen.network:8899"  # Replace this if your endpoint changes
+# Set the RPC endpoint for the network
+network_rpc="http://xolana.xen.network:8899"
 
-# Define the folders to check for JSON files (only root of agave-xolana and .config/solana)
+# Define the folders to check for JSON files
 folders=("$HOME/.config/solana" "$HOME/agave-xolana")
 
-# Refresh rate for stats option
+# Refresh rate for stats
 REFRESH_RATE=0.25
 
-# Function to display the options
+# Function to display the menu
 function display_menu() {
     echo -e "\nChoose an option:"
-    echo -e "1. Perform full test"
-    echo -e "2. Balance check only"
-    echo -e "3. Speed test only"
-    echo -e "4. Log check for errors only"
-    echo -e "5. Network check only"
-    echo -e "6. System stats monitor"
+    echo -e "1. Full test"
+    echo -e "2. Balance check"
+    echo -e "3. Speed test"
+    echo -e "4. Check logs for errors"
+    echo -e "5. Network check"
+    echo -e "6. Stats (CPU, Memory, Network)"
     echo -e "q. Quit"
     echo -n "Your choice: "
 }
@@ -49,10 +49,9 @@ function balance_check() {
 function speed_test() {
     echo -e "\n=== Network Speed Test ==="
     if command -v speedtest-cli &> /dev/null; then
-        echo -e "$(speedtest-cli --simple)"
+        speedtest-cli
     else
-        echo -e "speedtest-cli is not installed."
-        echo -e "To install it, run: sudo apt install speedtest-cli"
+        echo -e "speedtest-cli is not installed. Install it using: sudo apt install speedtest-cli"
     fi
 }
 
@@ -60,17 +59,8 @@ function speed_test() {
 function log_check() {
     echo -e "\n=== Recent Validator Errors ==="
     log_file="$HOME/agave-xolana/validator.log"
-    if [ ! -f "$log_file" ]; then
-        log_file=$(find / -type f -name "validator.log" 2>/dev/null | head -n 1)
-    fi
-
     if [ -f "$log_file" ]; then
-        recent_errors=$(grep "ERROR" "$log_file" | tail -n 5)
-        if [ -n "$recent_errors" ]; then
-            echo -e "Log File: $log_file\nRecent Errors:\n$recent_errors"
-        else
-            echo -e "No recent errors found in the validator logs."
-        fi
+        grep "ERROR" "$log_file" | tail -n 5 || echo "No errors found."
     else
         echo -e "Validator log file not found."
     fi
@@ -86,13 +76,13 @@ function network_check() {
     fi
 }
 
-# Function to display system stats monitor
-function system_stats() {
-    tput civis  # Hide cursor
-    trap 'tput cnorm; exit 0' SIGINT SIGTERM
+# Function to display stats
+function stats() {
     clear
     num_cpus=$(nproc)
+    tput civis  # Hide cursor
 
+    # Function to get CPU usage
     get_cpu_usage() {
         awk '/^cpu[0-9]/ {
             total = $2 + $3 + $4 + $5 + $6 + $7 + $8;
@@ -101,35 +91,48 @@ function system_stats() {
         }' /proc/stat
     }
 
-    declare -A prev_total prev_idle
-    while read -r cpu total idle; do
-        prev_total[$cpu]=$total
-        prev_idle[$cpu]=$idle
-    done < <(get_cpu_usage)
-
     while true; do
-        clear
-        echo "X1 System Stats Monitor"
-        echo "-----------------------------------------"
+        rx_old=$(cat "/sys/class/net/$IFACE/statistics/rx_bytes" 2>/dev/null || echo 0)
+        tx_old=$(cat "/sys/class/net/$IFACE/statistics/tx_bytes" 2>/dev/null || echo 0)
+        sleep $REFRESH_RATE
+        rx_new=$(cat "/sys/class/net/$IFACE/statistics/rx_bytes" 2>/dev/null || echo 0)
+        tx_new=$(cat "/sys/class/net/$IFACE/statistics/tx_bytes" 2>/dev/null || echo 0)
+        rx_kbs=$(echo "scale=2; ($rx_new - $rx_old) / 1024 / $REFRESH_RATE" | bc)
+        tx_kbs=$(echo "scale=2; ($tx_new - $tx_old) / 1024 / $REFRESH_RATE" | bc)
 
-        rx_kbs=$(awk '{print $1}' /sys/class/net/*/statistics/rx_bytes)
-        tx_kbs=$(awk '{print $1}' /sys/class/net/*/statistics/tx_bytes)
+        mem_total=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+        mem_free=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
+        mem_used=$((mem_total - mem_free))
+        mem_percentage=$((100 * mem_used / mem_total))
 
-        printf "Rx: %s kb/s | Tx: %s kb/s\n" "$rx_kbs" "$tx_kbs"
-        
-        # CPU bars
-        echo "X1 CPU Usage:"
-        for ((row = 5; row >= 0; row--)); do
-            for ((c = 0; c < num_cpus; c++)); do
-                usage=${core_usage[cpu$c]:-0}
-                height=$((usage / 20))
-                if ((height >= row)); then
-                    printf "\e[32m█\e[0m "
-                else
-                    printf "  "
-                fi
+        tput cup 0 0
+        echo "X1 System Stats:"
+        echo "--------------------------"
+        printf "Rx: %-8s kb/s | Tx: %-8s kb/s\n" "$rx_kbs" "$tx_kbs"
+        printf "Mem: %d%% [%0.2fG/%0.2fG]\n" "$mem_percentage" "$((mem_used / 1024 / 1024))" "$((mem_total / 1024 / 1024))"
+
+        # CPU Stats
+        declare -A core_usage
+        while read -r cpu total idle; do
+            prev_total=${prev_total[$cpu]:-0}
+            prev_idle=${prev_idle[$cpu]:-0}
+            delta_total=$((total - prev_total))
+            delta_idle=$((idle - prev_idle))
+            usage=$(( (100 * (delta_total - delta_idle)) / delta_total ))
+            core_usage[$cpu]=$usage
+            prev_total[$cpu]=$total
+            prev_idle[$cpu]=$idle
+        done < <(get_cpu_usage)
+
+        echo "CPU Usage:"
+        for ((c = 0; c < num_cpus; c++)); do
+            usage=${core_usage[cpu$c]:-0}
+            height=$((usage / 20))
+            printf "C%-2d: " "$c"
+            for ((i = 0; i < 5; i++)); do
+                if ((i < height)); then printf "█"; else printf " "; fi
             done
-            echo ""
+            printf " %d%%\n" "$usage"
         done
         sleep $REFRESH_RATE
     done
@@ -139,20 +142,14 @@ function system_stats() {
 while true; do
     display_menu
     read -r user_choice
-
     case "$user_choice" in
-        1)  # Full test
-            echo -e "\nPerforming full test..."
-            network_check
-            log_check
-            balance_check
-            ;;
-        2) balance_check ;;
-        3) speed_test ;;
-        4) log_check ;;
-        5) network_check ;;
-        6) system_stats ;;
-        q) echo -e "\nExiting the script. Goodbye!"; break ;;
-        *) echo -e "\nInvalid option. Please try again." ;;
+        1) echo "Running full test..."; network_check; log_check; balance_check ;;
+        2) echo "Running balance check..."; balance_check ;;
+        3) echo "Running speed test..."; speed_test ;;
+        4) echo "Checking logs for errors..."; log_check ;;
+        5) echo "Checking network connectivity..."; network_check ;;
+        6) echo "Launching stats..."; stats ;;
+        q) echo "Goodbye!"; break ;;
+        *) echo "Invalid option, try again." ;;
     esac
 done
