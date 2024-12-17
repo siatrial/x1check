@@ -3,18 +3,18 @@
 # Set the RPC endpoint for the network (using the correct X1 network endpoint)
 network_rpc="http://xolana.xen.network:8899"  # Replace this if your endpoint changes
 
-# Define the folders to check for JSON files
+# Define the folders to check for JSON files (only root of agave-xolana and .config/solana)
 folders=("$HOME/.config/solana" "$HOME/agave-xolana")
 
 # Function to display the options
 function display_menu() {
     echo -e "\nChoose an option:"
-    echo "1) Full test"
-    echo "2) Balance check"
-    echo "3) Speed test"
-    echo "4) Check logs for errors"
-    echo "5) Network check"
-    echo "6) System stats monitor"
+    echo -e "1) Perform a full test"
+    echo -e "2) Balance check only"
+    echo -e "3) Speed test only"
+    echo -e "4) Check logs for errors"
+    echo -e "5) Network connectivity check"
+    echo -e "6) System stats monitor"
     echo -e "q) Quit"
     echo -n "Your choice: "
 }
@@ -46,10 +46,10 @@ function balance_check() {
 function speed_test() {
     echo -e "\n=== Network Speed Test ==="
     if command -v speedtest-cli &> /dev/null; then
-        echo "Running speed test..."
-        speedtest-cli --simple
+        speedtest-cli
     else
-        echo "speedtest-cli is not installed. Install it using: sudo apt install speedtest-cli"
+        echo -e "speedtest-cli is not installed."
+        echo -e "To install it, run: sudo apt install speedtest-cli"
     fi
 }
 
@@ -57,10 +57,19 @@ function speed_test() {
 function log_check() {
     echo -e "\n=== Recent Validator Errors ==="
     log_file="$HOME/agave-xolana/validator.log"
+    if [ ! -f "$log_file" ]; then
+        log_file=$(find / -type f -name "validator.log" 2>/dev/null | head -n 1)
+    fi
+
     if [ -f "$log_file" ]; then
-        grep "ERROR" "$log_file" | tail -n 5 || echo "No recent errors found."
+        recent_errors=$(grep "ERROR" "$log_file" | tail -n 5)
+        if [ -n "$recent_errors" ]; then
+            echo -e "Log File: $log_file\nRecent Errors:\n$recent_errors"
+        else
+            echo -e "No recent errors found in the validator logs."
+        fi
     else
-        echo "Validator log file not found."
+        echo -e "Validator log file not found."
     fi
 }
 
@@ -68,13 +77,13 @@ function log_check() {
 function network_check() {
     echo -e "\n=== Network Connectivity ==="
     if curl -s --connect-timeout 5 "$network_rpc" &> /dev/null; then
-        echo "Network RPC ($network_rpc) is reachable."
+        echo -e "Network RPC ($network_rpc) is reachable."
     else
-        echo "Network RPC ($network_rpc) is not reachable."
+        echo -e "Network RPC ($network_rpc) is not reachable."
     fi
 }
 
-# Function to display system stats
+# Function to monitor system stats
 function system_stats() {
     REFRESH_RATE=0.25
     IFACE=$(ip link | awk -F: '$0 ~ "^[0-9]+:" {print $2; exit}' | tr -d ' ')
@@ -99,29 +108,29 @@ function system_stats() {
         # RX/TX Monitoring
         rx=$(cat "/sys/class/net/$IFACE/statistics/rx_bytes" 2>/dev/null || echo 0)
         tx=$(cat "/sys/class/net/$IFACE/statistics/tx_bytes" 2>/dev/null || echo 0)
-        sleep $REFRESH_RATE
+        sleep "$REFRESH_RATE"
         rx_new=$(cat "/sys/class/net/$IFACE/statistics/rx_bytes" 2>/dev/null || echo 0)
         tx_new=$(cat "/sys/class/net/$IFACE/statistics/tx_bytes" 2>/dev/null || echo 0)
-        rx_kbs=$(( (rx_new - rx) / 1024 / REFRESH_RATE ))
-        tx_kbs=$(( (tx_new - tx) / 1024 / REFRESH_RATE ))
-        echo "Rx: $rx_kbs kb/s | Tx: $tx_kbs kb/s"
+        rx_kbs=$(echo "scale=2; ($rx_new - $rx) / 1024 / $REFRESH_RATE" | bc)
+        tx_kbs=$(echo "scale=2; ($tx_new - $tx) / 1024 / $REFRESH_RATE" | bc)
+        printf "Rx: %-8s kb/s | Tx: %-8s kb/s\n" "$rx_kbs" "$tx_kbs"
 
         # Memory stats
         mem_total=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
         mem_free=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
         mem_used=$((mem_total - mem_free))
         mem_percentage=$((100 * mem_used / mem_total))
-        echo -e "Memory: $((mem_used / 1024))MB / $((mem_total / 1024))MB ($mem_percentage%)"
+        printf "Mem: %0.2fG / %0.2fG (%d%%)\n" "$((mem_used / 1024 / 1024))" "$((mem_total / 1024 / 1024))" "$mem_percentage"
 
         # CPU Stats
         echo -e "\nX1 CPU Usage:"
         for ((c = 0; c < num_cpus; c++)); do
-            cpu_usage=$(top -bn1 | grep "Cpu$c" | awk '{print $2}')
-            printf "CPU%-2d: %-3s%% " "$c" "$cpu_usage"
+            usage=$(awk -v cpu="cpu$c" '$1 == cpu {print 100 - $5}' /proc/stat)
+            printf "CPU%-2d: %-3s%% " "$c" "$usage"
             [[ $((c % 4)) -eq 3 ]] && echo ""  # New line every 4 CPUs
         done
         echo -e "\n\nPress Ctrl+C to return to the main menu."
-        sleep $REFRESH_RATE
+        sleep "$REFRESH_RATE"
     done
 }
 
@@ -129,36 +138,20 @@ function system_stats() {
 while true; do
     display_menu
     read -r user_choice
-
     case "$user_choice" in
         1)  # Full test
-            echo "Performing full test..."
+            echo -e "\nPerforming full test..."
             balance_check
             speed_test
             log_check
             network_check
             ;;
-        2)  # Balance check
-            balance_check
-            ;;
-        3)  # Speed test
-            speed_test
-            ;;
-        4)  # Log check
-            log_check
-            ;;
-        5)  # Network check
-            network_check
-            ;;
-        6)  # System stats monitor
-            system_stats
-            ;;
-        q)  # Quit
-            echo "Exiting. Goodbye!"
-            exit 0
-            ;;
-        *)  # Invalid input
-            echo "Invalid option. Please try again."
-            ;;
+        2)  balance_check ;;
+        3)  speed_test ;;
+        4)  log_check ;;
+        5)  network_check ;;
+        6)  system_stats ;;
+        q)  echo -e "\nExiting. Goodbye!"; break ;;
+        *)  echo -e "\nInvalid option. Please try again." ;;
     esac
 done
