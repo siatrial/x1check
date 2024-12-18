@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# X1 Validator Health Monitor Integrated into X1 Checker
+# X1 Validator Checker and Monitor
 
 network_rpc="http://localhost:8899"
 folders=("$HOME/.config/solana" "$HOME/agave-xolana")
@@ -15,7 +15,7 @@ display_menu() {
     echo -e "4. Check Logs for Errors"
     echo -e "5. Network Connectivity Check"
     echo -e "6. Validator Health Monitor"
-    echo -e "7. System Stats Monitor (x1stats)"
+    echo -e "7. System Stats Monitor"
     echo -e "q. Quit"
     echo -n "Enter your choice: "
 }
@@ -99,6 +99,24 @@ network_check() {
     fi
 }
 
+# Function: Log Check (Last 100 Lines)
+log_check() {
+    echo -e "\nChecking Logs for Errors (last 100 lines)..."
+    log_file="$HOME/validator.log"
+
+    if [[ -f "$log_file" ]]; then
+        errors=$(tail -n 100 "$log_file" | grep -i "ERROR")
+        if [[ -n "$errors" ]]; then
+            echo -e "\nRecent Errors in Logs:"
+            echo "$errors"
+        else
+            echo -e "\nNo errors found in the last 100 lines of the log."
+        fi
+    else
+        echo -e "\e[31mLog file not found at $log_file\e[0m"
+    fi
+}
+
 # Function: Run System Stats Monitor
 system_stats_monitor() {
     echo -e "\nLaunching System Stats Monitor..."
@@ -118,12 +136,12 @@ while true; do
             balance_check
             network_check
             validator_health_monitor
+            log_check
             ;;
         2)  balance_check ;;
         3)  echo -e "\nRunning Speed Test..." 
             speedtest-cli ;;
-        4)  echo -e "\nChecking Logs for Errors..." 
-            grep "ERROR" "$HOME/validator.log" || echo "No errors found." ;;
+        4)  log_check ;;
         5)  network_check ;;
         6)  validator_health_monitor ;;
         7)  system_stats_monitor ;;
