@@ -122,8 +122,11 @@ system_stats_monitor() {
     echo -e "\nLaunching System Stats Monitor..."
     if command -v x1stats &> /dev/null; then
         x1stats
+        echo -e "\nReturning to main menu..."
+        read -n 1 -s -r -p "Press any key to continue..."
     else
         echo -e "\e[31mx1stats script not found or not executable.\e[0m"
+        read -n 1 -s -r -p "Press any key to return to the menu..."
     fi
 }
 
