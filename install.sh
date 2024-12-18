@@ -2,7 +2,7 @@
 
 # Define variables
 MAIN_SCRIPT_NAME="x1check.sh"
-STATS_SCRIPT_NAME="x1stats.sh"
+STATS_SCRIPT_NAME="x1stats"
 GITHUB_REPO_URL="https://raw.githubusercontent.com/siatrial/x1check/main"
 
 # Update package list
