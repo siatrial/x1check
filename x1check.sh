@@ -117,15 +117,15 @@ log_check() {
     fi
 }
 
-# Function: Run System Stats Monitor
-system_stats_monitor() {
+# System Stats Monitor
+7)  
     echo -e "\nLaunching System Stats Monitor..."
-    if [[ -x "./x1stats" ]]; then
-        ./x1stats
+    if command -v x1stats &> /dev/null; then
+        x1stats
     else
         echo -e "\e[31mx1stats script not found or not executable.\e[0m"
     fi
-}
+    ;;
 
 # Main Menu Loop
 while true; do
