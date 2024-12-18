@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Define variables
-SCRIPT_NAME="x1check.sh"
+MAIN_SCRIPT_NAME="x1check.sh"
+STATS_SCRIPT_NAME="x1stats.sh"
 GITHUB_REPO_URL="https://raw.githubusercontent.com/siatrial/x1check/main"
 
 # Update package list
@@ -24,15 +25,22 @@ if ! command -v jq &> /dev/null; then
 fi
 
 # Download the main script
-echo "Downloading $SCRIPT_NAME..."
-curl -o $SCRIPT_NAME "$GITHUB_REPO_URL/$SCRIPT_NAME"
+echo "Downloading $MAIN_SCRIPT_NAME..."
+curl -o $MAIN_SCRIPT_NAME "$GITHUB_REPO_URL/$MAIN_SCRIPT_NAME"
 
-# Make the script executable
-echo "Setting executable permissions for $SCRIPT_NAME..."
-chmod +x $SCRIPT_NAME
+# Download the stats script
+echo "Downloading $STATS_SCRIPT_NAME..."
+curl -o $STATS_SCRIPT_NAME "$GITHUB_REPO_URL/$STATS_SCRIPT_NAME"
 
-# Move to /usr/local/bin for global access (optional)
-echo "Moving $SCRIPT_NAME to /usr/local/bin as 'x1check' for easy access..."
-sudo mv $SCRIPT_NAME /usr/local/bin/x1check
+# Make both scripts executable
+echo "Setting executable permissions for $MAIN_SCRIPT_NAME and $STATS_SCRIPT_NAME..."
+chmod +x $MAIN_SCRIPT_NAME $STATS_SCRIPT_NAME
 
-echo "Installation complete! You can now run the script with 'x1check'."
+# Move to /usr/local/bin for global access
+echo "Moving $MAIN_SCRIPT_NAME to /usr/local/bin as 'x1check'..."
+sudo mv $MAIN_SCRIPT_NAME /usr/local/bin/x1check
+
+echo "Moving $STATS_SCRIPT_NAME to /usr/local/bin as 'x1stats'..."
+sudo mv $STATS_SCRIPT_NAME /usr/local/bin/x1stats
+
+echo "Installation complete! You can now run the scripts with 'x1check' and 'x1stats'."
