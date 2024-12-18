@@ -36,7 +36,20 @@ curl -o $STATS_SCRIPT_NAME "$GITHUB_REPO_URL/$STATS_SCRIPT_NAME"
 echo "Setting executable permissions for $MAIN_SCRIPT_NAME and $STATS_SCRIPT_NAME..."
 chmod +x $MAIN_SCRIPT_NAME $STATS_SCRIPT_NAME
 
-# Move to /usr/local/bin for global access
+# Ensure /usr/local/bin exists
+if [[ ! -d "/usr/local/bin" ]]; then
+    echo "Creating /usr/local/bin directory..."
+    sudo mkdir -p /usr/local/bin
+fi
+
+# Ensure /usr/local/bin is in PATH
+if [[ ":$PATH:" != *":/usr/local/bin:"* ]]; then
+    echo "Adding /usr/local/bin to PATH..."
+    echo 'export PATH=$PATH:/usr/local/bin' >> ~/.bashrc
+    source ~/.bashrc
+fi
+
+# Move scripts to /usr/local/bin for global access
 echo "Moving $MAIN_SCRIPT_NAME to /usr/local/bin as 'x1check'..."
 sudo mv $MAIN_SCRIPT_NAME /usr/local/bin/x1check
 
