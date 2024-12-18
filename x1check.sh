@@ -90,7 +90,55 @@ validator_health_monitor() {
     echo -e "  Blocks:       \e[32m$(draw_progress $block_success_percent)\e[0m   ${block_success_percent}%   (Epoch Block Success)"
 }
 
-# Other functions remain the same...
+# Function: Draw Progress Bars with Floating Point Support
+draw_progress() {
+    local percent=$(printf "%.0f" "$1")  # Round to the nearest integer
+    local filled=$((percent / 5))
+    local empty=$((20 - filled))
+    printf "%0.s█" $(seq 1 $filled)
+    printf "%0.s░" $(seq 1 $empty)
+}
+
+# Function: Network Check
+network_check() {
+    echo -e "\nChecking RPC connectivity..."
+    if curl -s --connect-timeout 5 "$network_rpc" &>/dev/null; then
+        echo -e "RPC endpoint is \e[32mreachable.\e[0m"
+    else
+        echo -e "\e[31mError: RPC endpoint is not reachable.\e[0m"
+    fi
+}
+
+# Function: Log Check (Last 100 Lines)
+log_check() {
+    echo -e "\nChecking Logs for Errors (last 100 lines)..."
+    log_file="$HOME/validator.log"
+
+    if [[ -f "$log_file" ]]; then
+        errors=$(tail -n 100 "$log_file" | grep -i "ERROR")
+        if [[ -n "$errors" ]]; then
+            echo -e "\nRecent Errors in Logs:"
+            echo "$errors"
+        else
+            echo -e "\nNo errors found in the last 100 lines of the log."
+        fi
+    else
+        echo -e "\e[31mLog file not found at $log_file\e[0m"
+    fi
+}
+
+# Function: System Stats Monitor
+system_stats_monitor() {
+    echo -e "\nLaunching System Stats Monitor..."
+    if command -v x1stats &> /dev/null; then
+        x1stats
+        echo -e "\nReturning to main menu..."
+        read -n 1 -s -r -p "Press any key to continue..."
+    else
+        echo -e "\e[31mx1stats script not found or not executable.\e[0m"
+        read -n 1 -s -r -p "Press any key to return to the menu..."
+    fi
+}
 
 # Main Menu Loop
 while true; do
